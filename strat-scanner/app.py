@@ -4,6 +4,10 @@ from scanner.data import fetch_bars
 from scanner.patterns import detect_strat_patterns
 from scanner.utils import format_strat_match_df, save_to_csv
 
+# === Load secrets into env vars (for deployment) ===
+os.environ["APCA_API_KEY_ID"] = st.secrets["APCA_API_KEY_ID"]
+os.environ["APCA_API_SECRET_KEY"] = st.secrets["APCA_API_SECRET_KEY"]
+
 # === Load Watchlist ===
 def load_watchlist(name):
     path = f"{name}_watchlist.txt"
