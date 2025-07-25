@@ -1,4 +1,4 @@
-streamlit==1.35.0
-alpaca-py==0.16.0
-pandas==2.2.2
-python-dotenv==1.0.1
+streamlit
+alpaca-py
+pandas
+python-dotenv
