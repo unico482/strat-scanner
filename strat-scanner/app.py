@@ -6,7 +6,7 @@ from scanner.utils import format_strat_match_df, save_to_csv
 
 # === Load Watchlist ===
 def load_watchlist(name):
-    path = f"{name}_watchlist.txt"
+    path = f"strat-scanner/{name}_watchlist.txt"
     with open(path, "r") as f:
         return [line.strip().upper() for line in f if line.strip()]
 
