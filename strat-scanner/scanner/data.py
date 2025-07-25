@@ -5,7 +5,15 @@ from datetime import datetime, timedelta
 import pandas as pd
 import os
 
-import streamlit as st
+try:
+    import streamlit as st
+    ALPACA_KEY = st.secrets["APCA_API_KEY_ID"]
+    ALPACA_SECRET = st.secrets["APCA_API_SECRET_KEY"]
+except:
+    from dotenv import load_dotenv
+    load_dotenv()
+    ALPACA_KEY = os.getenv("APCA_API_KEY_ID")
+    ALPACA_SECRET = os.getenv("APCA_API_SECRET_KEY")
 
 # Load credentials from Streamlit Cloud secrets if present
 os.environ["APCA_API_KEY_ID"] = st.secrets["APCA_API_KEY_ID"]
