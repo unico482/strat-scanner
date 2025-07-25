@@ -4,11 +4,13 @@ from alpaca.data.timeframe import TimeFrame
 from datetime import datetime, timedelta
 import pandas as pd
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
+import streamlit as st
 
-# Load credentials
+# Load credentials from Streamlit Cloud secrets if present
+os.environ["APCA_API_KEY_ID"] = st.secrets["APCA_API_KEY_ID"]
+os.environ["APCA_API_SECRET_KEY"] = st.secrets["APCA_API_SECRET_KEY"]
+
 ALPACA_KEY = os.getenv("APCA_API_KEY_ID")
 ALPACA_SECRET = os.getenv("APCA_API_SECRET_KEY")
 
