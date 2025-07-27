@@ -1,20 +1,3 @@
-# --- connectivity probe ----------------------------------------------------
-import streamlit as st, requests, os
-
-def probe_binance_once():
-    try:
-        r = requests.get("https://fapi.binance.com/fapi/v1/ping", timeout=5)
-        code = r.status_code
-        msg  = f"Binance /fapi/v1/ping → {code}   " \
-               f"(host = {os.getenv('FLY_REGION', 'streamlit-cloud')})"
-    except Exception as e:
-        msg  = f"Binance ping failed → {e}"
-    # put the result in an unmistakeable place
-    st.markdown(f"### {msg}")
-
-probe_binance_once()
-# --------------------------------------------------------------------------
-
 import streamlit as st
 import pandas as pd
 from scanner.utils import load_watchlist
