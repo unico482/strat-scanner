@@ -1,3 +1,20 @@
+# --- connectivity probe ----------------------------------------------------
+import streamlit as st, requests, os
+
+def probe_binance_once():
+    try:
+        r = requests.get("https://fapi.binance.com/fapi/v1/ping", timeout=5)
+        code = r.status_code
+        msg  = f"Binance /fapi/v1/ping → {code}   " \
+               f"(host = {os.getenv('FLY_REGION', 'streamlit-cloud')})"
+    except Exception as e:
+        msg  = f"Binance ping failed → {e}"
+    # put the result in an unmistakeable place
+    st.markdown(f"### {msg}")
+
+probe_binance_once()
+# --------------------------------------------------------------------------
+
 import streamlit as st
 import pandas as pd
 from scanner.utils import load_watchlist
@@ -6,23 +23,6 @@ from scanner.patterns import detect_patterns
 
 st.set_page_config(page_title="Strat Scanner", layout="wide")
 st.title("Strat Pattern Scanner")
-
-def _probe_binance():
-    try:
-        # Make the request to Binance
-        r = requests.get("https://fapi.binance.com/fapi/v1/ping", timeout=5)
-        
-        # Show the result both in the sidebar and the main area
-        status_message = f"[probe] Binance ping → {r.status_code} (host region = {os.getenv('FLY_REGION', 'streamlit-cloud')})"
-        st.sidebar.write(status_message)  # Show in the Streamlit sidebar
-        st.write(status_message)  # Display in the main area
-    except Exception as e:
-        # If the request fails, show the error message
-        status_message = f"[probe] Binance ping failed → {e}"
-        st.sidebar.write(status_message)  # Show in the sidebar
-        st.write(status_message)  # Display in the main area
-
-_probe_binance()
 
 watchlist_type = st.selectbox("Watchlist Type", ["Stock", "Crypto"])
 
