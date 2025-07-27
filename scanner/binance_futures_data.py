@@ -2,20 +2,6 @@ import requests
 import pandas as pd
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
-def _probe_binance():
-    try:
-        r = requests.get("https://fapi.binance.com/fapi/v1/ping", timeout=5)
-        status_message = f"[probe] Binance ping → {r.status_code} (host region = {os.getenv('FLY_REGION', 'streamlit-cloud')})"
-        st.sidebar.write(status_message)  # Show in the Streamlit sidebar
-        print(status_message)  # Will show up in the app's logs
-    except Exception as e:
-        status_message = f"[probe] Binance ping failed → {e}"
-        st.sidebar.write(status_message)  # Show in the sidebar
-        print(status_message)  # Will show up in the app's logs
-        
-_probe_binance()
-
 import time
 
 INTERVAL_MAP = {
