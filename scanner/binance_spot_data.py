@@ -1,12 +1,5 @@
-"""
-binance_spot_data.py
-Pulls OHLCV bars from Binance’s public **spot** data mirror
-(https://data-api.binance.vision).  No keys, no geo-block, generous rate-limit.
-"""
-
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
 import pandas as pd
 import time
 
@@ -22,13 +15,13 @@ INTERVAL_MAP = {
 }
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
-MAX_WORKERS = 5          # safe for mirror rate-limit
+MAX_WORKERS = 5
 RETRIES     = 4
 TIMEOUT     = 10
 
 
 def convert_symbol_to_binance(symbol: str) -> str:
-    """Convert 'BTC/USD' → 'BTCUSDT' for Binance spot."""
+    """Convert 'BTC/USD' → 'BTCUSDT'."""
     base, _ = symbol.split("/")
     return base + "USDT"
 
@@ -36,7 +29,6 @@ def convert_symbol_to_binance(symbol: str) -> str:
 def fetch_symbol(symbol: str, timeframe: str) -> pd.DataFrame | None:
     binance_symbol = convert_symbol_to_binance(symbol)
     interval       = INTERVAL_MAP[timeframe.lower()]
-
     url = f"{BASE_URL}?symbol={binance_symbol}&interval={interval}&limit=4"
 
     for attempt in range(RETRIES):
@@ -58,9 +50,12 @@ def fetch_symbol(symbol: str, timeframe: str) -> pd.DataFrame | None:
                 ],
             )
             df["open_time"] = pd.to_datetime(df["open_time"], unit="ms")
-            df = df.rename(columns={"open_time": "timestamp"})  
-            df["symbol"]    = symbol
-            return df[["symbol", "symbol", "open", "high", "low", "close", "volume"]]
+            df = df.rename(columns={"open_time": "timestamp"})
+            df["symbol"] = symbol
+
+            # return the unified schema expected downstream
+            return df[["symbol", "timestamp", "open", "high", "low", "close", "volume"]]
+
         except Exception as e:
             if attempt < RETRIES - 1:
                 time.sleep(0.3)
@@ -73,9 +68,7 @@ def fetch_bars(symbols: list[str], timeframe: str) -> pd.DataFrame:
     """Fetch last 4 bars for every symbol, return concatenated DataFrame."""
     all_bars = []
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        futures = {
-            pool.submit(fetch_symbol, s, timeframe): s for s in symbols
-        }
+        futures = {pool.submit(fetch_symbol, s, timeframe): s for s in symbols}
         for fut in as_completed(futures):
             df = fut.result()
             if df is not None:
@@ -87,6 +80,6 @@ def fetch_bars(symbols: list[str], timeframe: str) -> pd.DataFrame:
         )
 
     df = pd.concat(all_bars, ignore_index=True)
-    df = df.loc[:, ~df.columns.duplicated()]
+    df = df.loc[:, ~df.columns.duplicated()]  # drop duplicate columns
 
     return df
