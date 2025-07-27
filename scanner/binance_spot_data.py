@@ -15,7 +15,7 @@ INTERVAL_MAP = {
 }
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
-MAX_WORKERS = 5
+MAX_WORKERS = 8
 RETRIES     = 4
 TIMEOUT     = 10
 
