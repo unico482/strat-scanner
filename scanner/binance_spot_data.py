@@ -82,6 +82,11 @@ def fetch_bars(symbols: list[str], timeframe: str) -> pd.DataFrame:
                 all_bars.append(df)
 
     if not all_bars:
-        return pd.DataFrame(columns=["symbol", "open_time", "open", "high", "low", "close", "volume"])
+        return pd.DataFrame(
+            columns=["symbol", "timestamp", "open", "high", "low", "close", "volume"]
+        )
 
-    return pd.concat(all_bars, ignore_index=True)
+    df = pd.concat(all_bars, ignore_index=True)
+    df = df.loc[:, ~df.columns.duplicated()]
+
+    return df
