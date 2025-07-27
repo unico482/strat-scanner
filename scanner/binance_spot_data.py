@@ -60,7 +60,7 @@ def fetch_symbol(symbol: str, timeframe: str) -> pd.DataFrame | None:
             df["open_time"] = pd.to_datetime(df["open_time"], unit="ms")
             df = df.rename(columns={"open_time": "timestamp"})  
             df["symbol"]    = symbol
-            return df[["symbol", "open_time", "open", "high", "low", "close", "volume"]]
+            return df[["symbol", "symbol", "open", "high", "low", "close", "volume"]]
         except Exception as e:
             if attempt < RETRIES - 1:
                 time.sleep(0.3)
