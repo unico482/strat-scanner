@@ -1,86 +1,84 @@
+"""
+binance_spot_data.py
+Pulls OHLCV bars from Binance’s public **spot** data mirror
+(https://data-api.binance.vision).  No keys, no geo-block, generous rate-limit.
+"""
+
 import requests
-import pandas as pd
-from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+import pandas as pd
 import time
+
+BASE_URL = "https://data-api.binance.vision/api/v3/klines"
 
 INTERVAL_MAP = {
     "day": "1d",
     "previous day": "1d",
     "week": "1w",
     "month": "1M",
-    "4h": "4h",
-    "12h": "12h"
 }
 
-def convert_symbol_to_binance(symbol):
-    """Convert 'BTC/USD' → 'BTCUSDT'."""
-    base, quote = symbol.split("/")
+HEADERS = {"User-Agent": "Mozilla/5.0"}
+MAX_WORKERS = 5          # safe for mirror rate-limit
+RETRIES     = 4
+TIMEOUT     = 10
+
+
+def convert_symbol_to_binance(symbol: str) -> str:
+    """Convert 'BTC/USD' → 'BTCUSDT' for Binance spot."""
+    base, _ = symbol.split("/")
     return base + "USDT"
 
-def fetch_symbol(symbol, timeframe, max_retries=3):
-    try:
-        binance_symbol = convert_symbol_to_binance(symbol)
-        interval = INTERVAL_MAP[timeframe.lower()]
-        url = f"https://fapi.binance.com/fapi/v1/klines?symbol={binance_symbol}&interval={interval}&limit=4"
 
-        for attempt in range(max_retries):
-            try:
-                response = requests.get(url, timeout=5)
-                response.raise_for_status()
-                break
-            except requests.exceptions.RequestException as e:
-                if attempt < max_retries - 1:
-                    time.sleep(0.5)
-                    continue
-                else:
-                    raise e
+def fetch_symbol(symbol: str, timeframe: str) -> pd.DataFrame | None:
+    binance_symbol = convert_symbol_to_binance(symbol)
+    interval       = INTERVAL_MAP[timeframe.lower()]
 
-        data = response.json()
-        if not data:
-            print(f"[NO DATA] {symbol}")
-            return None
+    url = f"{BASE_URL}?symbol={binance_symbol}&interval={interval}&limit=4"
 
-        df = pd.DataFrame(data, columns=[
-            "timestamp", "open", "high", "low", "close", "volume",
-            "_1", "_2", "_3", "_4", "_5", "_6"
-        ])[
-            ["timestamp", "open", "high", "low", "close", "volume"]
-        ]
+    for attempt in range(RETRIES):
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
+            if r.status_code != 200:
+                raise RuntimeError(f"HTTP {r.status_code}")
+            klines = r.json()
+            if not klines:
+                return None
 
-        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-        df[["open", "high", "low", "close", "volume"]] = df[
-            ["open", "high", "low", "close", "volume"]
-        ].astype(float)
+            df = pd.DataFrame(
+                klines,
+                columns=[
+                    "open_time", "open", "high", "low", "close",
+                    "volume", "close_time", "quote_asset_vol",
+                    "num_trades", "taker_buy_base_vol",
+                    "taker_buy_quote_vol", "ignore",
+                ],
+            )
+            df["open_time"] = pd.to_datetime(df["open_time"], unit="ms")
+            df["symbol"]    = symbol
+            return df[["symbol", "open_time", "open", "high", "low", "close", "volume"]]
+        except Exception as e:
+            if attempt < RETRIES - 1:
+                time.sleep(0.3)
+            else:
+                print(f"[ERROR] {symbol} {timeframe}: {e}")
+                return None
 
-        df["symbol"] = symbol
-        df["timeframe"] = timeframe
 
-        # If 'Previous Day', drop today's partial candle
-        if timeframe.lower() == "previous day":
-            df = df.iloc[:-1]
+def fetch_bars(symbols: list[str], timeframe: str) -> pd.DataFrame:
+    """Fetch last 4 bars for every symbol, return concatenated DataFrame."""
+    all_bars = []
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        futures = {
+            pool.submit(fetch_symbol, s, timeframe): s for s in symbols
+        }
+        for fut in as_completed(futures):
+            df = fut.result()
+            if df is not None:
+                all_bars.append(df)
 
-        return df
+    if not all_bars:
+        return pd.DataFrame(columns=["symbol", "open_time", "open", "high", "low", "close", "volume"])
 
-    except Exception as e:
-        print(f"[ERROR] Failed to fetch {symbol} → {e}")
-        return None
-
-def fetch_crypto_bars_binance_futures(tickers, timeframe: str):
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = [executor.submit(fetch_symbol, symbol, timeframe) for symbol in tickers]
-        results = [f.result() for f in as_completed(futures)]
-
-    all_bars = [df for df in results if df is not None]
-
-    if all_bars:
-        bars = (
-            pd.concat(all_bars, ignore_index=True)
-            .sort_values(["symbol", "timestamp"])
-            .groupby("symbol")
-            .tail(4)
-            .reset_index(drop=True)
-        )
-        return bars
-    else:
-        return pd.DataFrame(columns=["symbol", "timestamp", "open", "high", "low", "close", "volume", "timeframe"])
+    return pd.concat(all_bars, ignore_index=True)
