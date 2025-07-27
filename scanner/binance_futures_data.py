@@ -13,6 +13,8 @@ def _probe_binance():
         status_message = f"[probe] Binance ping failed → {e}"
         st.sidebar.write(status_message)  # Show in the sidebar
         print(status_message)  # Will show up in the app's logs
+        
+_probe_binance()
 
 import time
 
