@@ -24,6 +24,7 @@ selected_patterns = st.multiselect(
         {"label": "2d Green", "value": "2d Green"},
         {"label": "RevStrat", "value": "RevStrat"},
         {"label": "3-2-2", "value": "3-2-2"},
+        {"label": "Outside Bar", "value": "Outside Bar},
     ],
     format_func=lambda x: x["label"],
     default=[],
