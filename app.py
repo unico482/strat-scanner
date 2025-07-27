@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import requests, os; print("Binance ping →", requests.get("https://fapi.binance.com/fapi/v1/ping", timeout=5).status_code)
 from scanner.utils import load_watchlist
 from scanner.data import fetch_bars
 from scanner.patterns import detect_patterns
