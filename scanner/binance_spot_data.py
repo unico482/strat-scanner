@@ -13,6 +13,8 @@ import time
 BASE_URL = "https://data-api.binance.vision/api/v3/klines"
 
 INTERVAL_MAP = {
+    "4h": "4h",
+    "12h": "12h",
     "day": "1d",
     "previous day": "1d",
     "week": "1w",
@@ -56,6 +58,7 @@ def fetch_symbol(symbol: str, timeframe: str) -> pd.DataFrame | None:
                 ],
             )
             df["open_time"] = pd.to_datetime(df["open_time"], unit="ms")
+            df = df.rename(columns={"open_time": "timestamp"})  
             df["symbol"]    = symbol
             return df[["symbol", "open_time", "open", "high", "low", "close", "volume"]]
         except Exception as e:
