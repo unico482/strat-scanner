@@ -50,10 +50,13 @@ def fetch_symbol(symbol: str, timeframe: str) -> pd.DataFrame | None:
                 ],
             )
             df["open_time"] = pd.to_datetime(df["open_time"], unit="ms")
+
+            numeric_cols = ["open", "high", "low", "close", "volume"]
+            df[numeric_cols] = df[numeric_cols].astype(float)
+
             df = df.rename(columns={"open_time": "timestamp"})
             df["symbol"] = symbol
 
-            # return the unified schema expected downstream
             return df[["symbol", "timestamp", "open", "high", "low", "close", "volume"]]
 
         except Exception as e:
