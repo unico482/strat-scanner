@@ -53,7 +53,7 @@ def detect_patterns(symbol, candles, selected_filters):
         matches.append("Inside Bar")
 
     if "Outside" in selected_filters and sn_cc == 3:
-        matches.append("Outside")
+        matches.append("Outside Bar")
 
     if "2d Green" in selected_filters and sn_cc == 2 and cc.low < c1.low and cc.close > cc.open:
         matches.append("2d Green")
