@@ -166,7 +166,7 @@ if st.button("Run Scanner"):
 
         # final output
         df = df[["Symbol", "Pattern", "TFC"]]
-        st.dataframe(df, use_container_width=True)
+        st.table(df)
 
     except Exception as e:
         st.error(f"Error while running scanner: {e}")
