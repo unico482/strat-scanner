@@ -181,39 +181,39 @@ if st.button("Run Scanner"):
         ordered = ["Symbol", "Pattern", "CC", "C1", "C2", "TFC"]
         df = df[[c for c in ordered if c in df.columns]]
 
-        # ─────  convert Pattern to list → Streamlit shows pill chips  ─────
-        df["Pattern"] = df["Pattern"].apply(lambda x: [x] if not isinstance(x, list) else x)
+        # ─────────  prepare Pattern pill  ─────────
+        df["Pattern"] = df["Pattern"].apply(lambda v: [v] if not isinstance(v, list) else v)
 
-        # ─────  split TFC into separate columns (letters)  ─────
-        df["D_flag"] = df.pop("D") if "D" in df.columns else None
-        df["W_flag"] = df.pop("W") if "W" in df.columns else None
-        df["M_flag"] = df.pop("M") if "M" in df.columns else None
+        # ─────────  build TFC columns  ─────────
+        tfc_cols = []
+        if "D_flag" in df.columns:   # Only present for 4H / 12H scans
+            df["D"] = df.pop("D_flag")
+            tfc_cols.append("D")
+        if "W_flag" in df.columns:
+            df["W"] = df.pop("W_flag")
+            tfc_cols.append("W")
+        if "M_flag" in df.columns:
+            df["M"] = df.pop("M_flag")
+            tfc_cols.append("M")
 
-        for col, letter in (("D_flag", "D"), ("W_flag", "W"), ("M_flag", "M")):
-            if col in df.columns:
-                df[letter] = df[col].apply(lambda b: letter if b is not None else "")
+        # Re-order visible columns
+        visible = ["Symbol", "Pattern", "CC", "C1", "C2"] + tfc_cols
+        df = df[visible]
 
-        # reorder visible columns
-        visible_cols = ["Symbol", "Pattern", "CC", "C1", "C2", "D", "W", "M"]
-        df = df[[c for c in visible_cols if c in df.columns]]
-
-        # ─────  Styler: colour text + hide grid + hide index + drop flag cols  ─────
-        def colour_text(val):
-            # val is 'D','W','M' or ''
-            if val in ("D", "W", "M"):
-                colour = "#10b981" if val.isupper() else "#ef4444"  # uppercase → green, lowercase (unused) → red
-                return f"color: {colour}; font-weight: 700;"
+        # ─────────  Styler: colour text, hide index, remove borders  ─────────
+        def colour_tfc(val):
+            if val is True:
+                return "color:#10b981; font-weight:700;"   # green
+            if val is False:
+                return "color:#ef4444; font-weight:700;"   # red
             return ""
 
         styler = (
             df.style
-              .applymap(colour_text, subset=["D", "W", "M"])
-              .hide(axis="index")                                # no row numbers
-              .set_table_styles(
-                  [                                               # remove all borders
-                      {"selector": "th, td", "props": [("border", "none")]},
-                  ]
-              )
+              .format({c: (lambda v, L=c: L if pd.notna(v) else "") for c in tfc_cols})
+              .applymap(colour_tfc, subset=tfc_cols)
+              .hide(axis="index")
+              .set_table_styles([{"selector": "th, td", "props": [("border", "none")]}])
         )
 
         st.dataframe(styler, use_container_width=True)
