@@ -10,29 +10,6 @@ from scanner.patterns import detect_patterns
 st.set_page_config(page_title="Strat Scanner", layout="wide")
 st.title("Strat Pattern Scanner")
 
-st.markdown(
-    """
-    <style>
-    /* darker header + grey text */
-    .strat-table thead th {
-        background-color:#1b1b1b !important;
-        color:#b3b3b3 !important;
-    }
-    /* remove fixed layout so columns shrink on mobile */
-    .strat-table {
-        width:100% !important;
-        table-layout:auto !important;
-    }
-    /* pattern pill stays charcoal / rounded */
-    .pattern-pill {
-        background:#3a3a3a; color:#e5e5e5;
-        padding:2px 6px; border-radius:4px;
-        white-space:nowrap;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
 
 # ────────── sidebar widgets ──────────
 watchlist_label = st.selectbox("Watchlist Type", ["Stocks", "Crypto"])
@@ -85,7 +62,7 @@ def get_htf_bars(symbols: list[str], tf: str, src: str) -> pd.DataFrame:
 
 
 def tfc_flag(bar: pd.Series) -> bool | None:
-    """True = green close, False = red close, None = inside / NA."""
+    """True = green close, False = red close, None = inside/NA."""
     try:
         if pd.isna(bar["open"]) or pd.isna(bar["close"]) or bar["high"] == bar["low"]:
             return None
@@ -97,15 +74,17 @@ def tfc_flag(bar: pd.Series) -> bool | None:
 def colour_letter(flag: bool | None, label: str) -> str:
     if flag is None or pd.isna(flag):
         return ""
-    colour = "#10b981" if flag else "#ef4444"            # green / red
-    return f'<span style="color:{colour}; font-weight:700">{label}</span>'
+    colour = "#10b981" if flag else "#ef4444"
+    return f"{label}"  if colour == "#10b981" else f"{label}"  # placeholder, will stay plain text
 
 
 def style_pattern(value) -> str:
-    txt = ", ".join(value) if isinstance(value, list) else str(value).strip("[]'\" ")
-    return f'<span class="pattern-pill">{txt.capitalize()}</span>'
+    """Return plain text for Streamlit-native table (no HTML)."""
+    return ", ".join(value) if isinstance(value, list) else str(value)
 
-SPACER = "&nbsp;&nbsp;&nbsp;"        # three NBSP for wider gaps
+
+SPACER = "   "           # three regular spaces for wider gaps
+
 
 # ────────── main action ──────────
 if st.button("Run Scanner"):
@@ -113,18 +92,17 @@ if st.button("Run Scanner"):
         tickers = load_watchlist(watchlist_type.lower())
         tf_key  = timeframe.lower()
 
-        # raw bars
+        # fetch raw bars
         bars_df = fetch_bars(tickers, tf_key, watchlist_type.lower())
         st.markdown(f"### Scanning {watchlist_type} watchlist on {timeframe} timeframe…")
         st.write(f"Raw bars fetched: ({bars_df.shape[0]}, {bars_df.shape[1]})")
 
         # keep four bars per symbol, newest last
-        bars_df = bars_df.sort_values(["symbol", "timestamp"])
         recent_bars = (
-            bars_df
-            .groupby("symbol")
-            .tail(4)
-            .reset_index(drop=True)
+            bars_df.sort_values(["symbol", "timestamp"])
+                   .groupby("symbol")
+                   .tail(4)
+                   .reset_index(drop=True)
         )
 
         # shift window when “Use previous” is active
@@ -132,14 +110,14 @@ if st.button("Run Scanner"):
             mask = recent_bars.groupby("symbol").cumcount(ascending=False) != 0
             recent_bars = recent_bars[mask].reset_index(drop=True)
 
-        # ─── decide which higher-TF bars we need ───
+        # decide higher-TFs needed
         if tf_key in ("4h", "12h"):
             htf_list = ["day", "week", "month"]
         elif tf_key in ("day", "previous day", "3 day"):
             htf_list = ["week", "month"]
         elif tf_key == "week":
             htf_list = ["month"]
-        else:                                    # month scan → no higher TF
+        else:
             htf_list = []
 
         htf_data = {
@@ -174,21 +152,16 @@ if st.button("Run Scanner"):
 
         df = pd.DataFrame(matches)
 
-        # colour-coded letters
-        for col, letter in (("D", "D"), ("W", "W"), ("M", "M")):
+        # plain-text continuity letters (Streamlit will colour according to theme)
+        for col in ("D", "W", "M"):
             if col in df.columns:
-                df[col] = df[col].apply(lambda v, L=letter: colour_letter(v, L))
+                df[col] = df[col].apply(lambda v, l=col: l if v is not None else "")
 
-        # build TFC column with wider gaps
-        def tfc_string(row):
-            parts = [row.get("D", ""), row.get("W", ""), row.get("M", "")]
-            parts = [p for p in parts if p]            # drop empties
-            return SPACER.join(parts)
-
-        df["TFC"] = df.apply(tfc_string, axis=1)
+        # build TFC column
+        df["TFC"] = df.apply(lambda r: SPACER.join([r.get(x, "") for x in ("D","W","M") if r.get(x)]), axis=1)
         df = df.drop(columns=[c for c in ("D", "W", "M") if c in df.columns])
 
-        # rename & capitalise headers
+        # rename & prettify
         df = df.rename(
             columns={
                 "symbol":  "Symbol",
@@ -199,24 +172,17 @@ if st.button("Run Scanner"):
             }
         )
 
-        # prettify values
         if "Symbol" in df.columns:
             df["Symbol"] = df["Symbol"].str.upper()
         if "Pattern" in df.columns:
             df["Pattern"] = df["Pattern"].apply(style_pattern)
 
-        # build HTML table (responsive width, custom CSS class)
-        table_html = (
-            df.to_html(
-                escape=False,
-                index=False,
-                border=0,
-                classes="strat-table"
-            )
-        )
+        # column order for native dataframe
+        ordered = ["Symbol", "Pattern", "CC", "C1", "C2", "TFC"]
+        df = df[[c for c in ordered if c in df.columns]]
 
-        st.markdown(table_html, unsafe_allow_html=True)
-
+        # Streamlit-native responsive table
+        st.dataframe(df, use_container_width=True)
 
     except Exception as e:
         st.error(f"Error while running scanner: {e}")
