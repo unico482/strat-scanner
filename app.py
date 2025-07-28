@@ -1,84 +1,13 @@
-import streamlit as st
-import pandas as pd
-
-from scanner.utils import load_watchlist
-from scanner.data import fetch_bars
-from scanner.patterns import detect_patterns
-
-
-# ────────── page setup ──────────
-st.set_page_config(page_title="Strat Scanner", layout="wide")
-st.title("Strat Pattern Scanner")
-
-
-# ────────── sidebar widgets ──────────
-watchlist_type = st.selectbox("Watchlist Type", ["Stock", "Crypto"])
-
-if watchlist_type == "Crypto":
-    timeframe = st.selectbox(
-        "Timeframe",
-        ["4H", "12H", "Day", "3 Day", "Week", "Month"],
-    )
-else:
-    timeframe = st.selectbox("Timeframe", ["Day", "Week", "Month"])
-
-scan_previous = st.checkbox(
-    "Use previous",
-    value=False,
-    help="When checked, patterns are evaluated on the bar that closed one period ago.",
-)
-
-selected_patterns = st.multiselect(
-    "Filter patterns",
-    options=[
-        {"label": "Hammer",      "value": "Hammer"},
-        {"label": "Shooter",     "value": "Shooter"},
-        {"label": "Inside Bar",  "value": "Inside Bar"},
-        {"label": "2u Red",      "value": "2u Red"},
-        {"label": "2d Green",    "value": "2d Green"},
-        {"label": "RevStrat",    "value": "RevStrat"},
-        {"label": "3-2-2",       "value": "3-2-2"},
-        {"label": "Outside Bar", "value": "Outside Bar"},
-    ],
-    format_func=lambda x: x["label"],
-    default=[],
-)
-
-
-# ────────── helpers ──────────
-@st.cache_data(ttl=3600)
-def get_htf_bars(symbols: list[str], tf: str, src: str) -> pd.DataFrame:
-    df = fetch_bars(symbols, tf, src)
-    if df.empty:
-        return pd.DataFrame(columns=["symbol"]).set_index("symbol")
-    return (
-        df.sort_values(["symbol", "timestamp"])
-          .groupby("symbol")
-          .tail(1)
-          .set_index("symbol")
-    )
-
-
-def tfc_flag(bar: pd.Series) -> bool | None:
-    try:
-        if pd.isna(bar["open"]) or pd.isna(bar["close"]) or bar["high"] == bar["low"]:
-            return None
-        return bool(bar["close"] > bar["open"])
-    except KeyError:
-        return None
-
-
 # ────────── main action ──────────
 if st.button("Run Scanner"):
     try:
         tickers = load_watchlist(watchlist_type.lower())
-        tf_key  = timeframe.lower()
+        tf_key = timeframe.lower()
 
         bars_df = fetch_bars(tickers, tf_key, watchlist_type.lower())
         st.markdown(f"### Scanning {watchlist_type} watchlist on {timeframe} timeframe…")
         st.write(f"Raw bars fetched: ({bars_df.shape[0]}, {bars_df.shape[1]})")
 
-        # keep four bars per symbol
         bars_df = bars_df.sort_values(["symbol", "timestamp"])
         recent_bars = (
             bars_df.groupby("symbol")
@@ -90,7 +19,7 @@ if st.button("Run Scanner"):
             mask = recent_bars.groupby("symbol").cumcount(ascending=False) != 0
             recent_bars = recent_bars[mask].reset_index(drop=True)
 
-        # determine which TFC bars are needed
+        # decide higher timeframes
         if tf_key in ("4h", "12h"):
             htf_list = ["day", "week", "month"]
         elif tf_key in ("day", "previous day", "3 day"):
@@ -131,20 +60,18 @@ if st.button("Run Scanner"):
 
         df = pd.DataFrame(matches)
 
-        # pattern pill display
-        df["Pattern"] = df["Pattern"].apply(lambda x: [x] if not isinstance(x, list) else x)
-
-        # ─────  standardise column names  ─────
+        # ───── standardise column names ─────
         df = df.rename(columns={
             "symbol": "Symbol",
             "patterns": "Pattern"
         })
-
-        # make ticker uppercase
         if "Symbol" in df.columns:
             df["Symbol"] = df["Symbol"].str.upper()
 
-        # build TFC column with letter logic
+        # ───── pill-style pattern column ─────
+        df["Pattern"] = df["Pattern"].apply(lambda x: [x] if not isinstance(x, list) else x)
+
+        # ───── TFC logic: uppercase = green, lowercase = red ─────
         def tfc_letter(flag, label):
             if pd.isna(flag) or flag is None:
                 return ""
@@ -161,13 +88,13 @@ if st.button("Run Scanner"):
             axis=1
         )
 
+        # drop temp flag columns
         for col in ("D_flag", "W_flag", "M_flag"):
             if col in df.columns:
                 df.drop(columns=col, inplace=True)
 
-        # final columns: Symbol, Pattern, TFC
+        # final output
         df = df[["Symbol", "Pattern", "TFC"]]
-
         st.dataframe(df, use_container_width=True)
 
     except Exception as e:
