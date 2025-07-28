@@ -181,8 +181,42 @@ if st.button("Run Scanner"):
         ordered = ["Symbol", "Pattern", "CC", "C1", "C2", "TFC"]
         df = df[[c for c in ordered if c in df.columns]]
 
-        # Streamlit-native responsive table
-        st.dataframe(df, use_container_width=True)
+        # ─────  convert Pattern to list → Streamlit shows pill chips  ─────
+        df["Pattern"] = df["Pattern"].apply(lambda x: [x] if not isinstance(x, list) else x)
 
-    except Exception as e:
+        # ─────  split TFC into separate columns (letters)  ─────
+        df["D_flag"] = df.pop("D") if "D" in df.columns else None
+        df["W_flag"] = df.pop("W") if "W" in df.columns else None
+        df["M_flag"] = df.pop("M") if "M" in df.columns else None
+
+        for col, letter in (("D_flag", "D"), ("W_flag", "W"), ("M_flag", "M")):
+            if col in df.columns:
+                df[letter] = df[col].apply(lambda b: letter if b is not None else "")
+
+        # reorder visible columns
+        visible_cols = ["Symbol", "Pattern", "CC", "C1", "C2", "D", "W", "M"]
+        df = df[[c for c in visible_cols if c in df.columns]]
+
+        # ─────  Styler: colour text + hide grid + hide index + drop flag cols  ─────
+        def colour_text(val):
+            # val is 'D','W','M' or ''
+            if val in ("D", "W", "M"):
+                colour = "#10b981" if val.isupper() else "#ef4444"  # uppercase → green, lowercase (unused) → red
+                return f"color: {colour}; font-weight: 700;"
+            return ""
+
+        styler = (
+            df.style
+              .applymap(colour_text, subset=["D", "W", "M"])
+              .hide(axis="index")                                # no row numbers
+              .set_table_styles(
+                  [                                               # remove all borders
+                      {"selector": "th, td", "props": [("border", "none")]},
+                  ]
+              )
+        )
+
+        st.dataframe(styler, use_container_width=True)
+
+ except Exception as e:
         st.error(f"Error while running scanner: {e}")
