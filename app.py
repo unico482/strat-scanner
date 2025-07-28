@@ -1,3 +1,74 @@
+import streamlit as st
+import pandas as pd
+
+from scanner.utils import load_watchlist
+from scanner.data import fetch_bars
+from scanner.patterns import detect_patterns
+
+
+# ────────── page setup ──────────
+st.set_page_config(page_title="Strat Scanner", layout="wide")
+st.title("Strat Pattern Scanner")
+
+
+# ────────── sidebar widgets ──────────
+watchlist_label = st.selectbox("Watchlist Type", ["Stocks", "Crypto"])
+watchlist_type  = "stock" if watchlist_label == "Stocks" else "crypto"
+
+if watchlist_type == "Crypto":
+    timeframe = st.selectbox(
+        "Timeframe",
+        ["4H", "12H", "Day", "3 Day", "Week", "Month"],
+    )
+else:
+    timeframe = st.selectbox("Timeframe", ["Day", "Week", "Month"])
+
+scan_previous = st.checkbox(
+    "Use previous",
+    value=False,
+    help="When checked, patterns are evaluated on the bar that closed one period ago.",
+)
+
+selected_patterns = st.multiselect(
+    "Filter patterns",
+    options=[
+        {"label": "Hammer",      "value": "Hammer"},
+        {"label": "Shooter",     "value": "Shooter"},
+        {"label": "Inside Bar",  "value": "Inside Bar"},
+        {"label": "2u Red",      "value": "2u Red"},
+        {"label": "2d Green",    "value": "2d Green"},
+        {"label": "RevStrat",    "value": "RevStrat"},
+        {"label": "3-2-2",       "value": "3-2-2"},
+        {"label": "Outside Bar", "value": "Outside Bar"},
+    ],
+    format_func=lambda x: x["label"],
+    default=[],
+)
+
+
+# ────────── helpers ──────────
+@st.cache_data(ttl=3600)
+def get_htf_bars(symbols: list[str], tf: str, src: str) -> pd.DataFrame:
+    df = fetch_bars(symbols, tf, src)
+    if df.empty:
+        return pd.DataFrame(columns=["symbol"]).set_index("symbol")
+    return (
+        df.sort_values(["symbol", "timestamp"])
+          .groupby("symbol")
+          .tail(1)
+          .set_index("symbol")
+    )
+
+
+def tfc_flag(bar: pd.Series) -> bool | None:
+    try:
+        if pd.isna(bar["open"]) or pd.isna(bar["close"]) or bar["high"] == bar["low"]:
+            return None
+        return bool(bar["close"] > bar["open"])
+    except KeyError:
+        return None
+
+
 # ────────── main action ──────────
 if st.button("Run Scanner"):
     try:
