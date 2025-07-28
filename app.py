@@ -134,6 +134,16 @@ if st.button("Run Scanner"):
         # pattern pill display
         df["Pattern"] = df["Pattern"].apply(lambda x: [x] if not isinstance(x, list) else x)
 
+        # ─────  standardise column names  ─────
+        df = df.rename(columns={
+            "symbol": "Symbol",
+            "patterns": "Pattern"
+        })
+
+        # make ticker uppercase
+        if "Symbol" in df.columns:
+            df["Symbol"] = df["Symbol"].str.upper()
+
         # build TFC column with letter logic
         def tfc_letter(flag, label):
             if pd.isna(flag) or flag is None:
