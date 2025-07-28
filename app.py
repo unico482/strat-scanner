@@ -128,7 +128,7 @@ if st.button("Run Scanner"):
         )
 
         # shift window when “Use previous” is active
-       if scan_previous:
+        if scan_previous:
             mask = recent_bars.groupby("symbol").cumcount(ascending=False) != 0
             recent_bars = recent_bars[mask].reset_index(drop=True)
 
