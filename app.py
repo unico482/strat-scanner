@@ -217,6 +217,3 @@ if st.button("Run Scanner"):
         )
 
         st.dataframe(styler, use_container_width=True)
-
-        except Exception as e:
-            st.error(f"Error while running scanner: {e}")
