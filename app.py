@@ -10,6 +10,29 @@ from scanner.patterns import detect_patterns
 st.set_page_config(page_title="Strat Scanner", layout="wide")
 st.title("Strat Pattern Scanner")
 
+st.markdown(
+    """
+    <style>
+    /* darker header + grey text */
+    .strat-table thead th {
+        background-color:#1b1b1b !important;
+        color:#b3b3b3 !important;
+    }
+    /* remove fixed layout so columns shrink on mobile */
+    .strat-table {
+        width:100% !important;
+        table-layout:auto !important;
+    }
+    /* pattern pill stays charcoal / rounded */
+    .pattern-pill {
+        background:#3a3a3a; color:#e5e5e5;
+        padding:2px 6px; border-radius:4px;
+        white-space:nowrap;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # ────────── sidebar widgets ──────────
 watchlist_type = st.selectbox("Watchlist Type", ["Stock", "Crypto"])
@@ -79,16 +102,9 @@ def colour_letter(flag: bool | None, label: str) -> str:
 
 def style_pattern(value) -> str:
     txt = ", ".join(value) if isinstance(value, list) else str(value).strip("[]'\" ")
-    return (
-        '<span style="background-color:#3a3a3a; color:#e5e5e5; '
-        'border-radius:4px; padding:2px 6px;">'
-        f'{txt.capitalize()}'
-        '</span>'
-    )
-
+    return f'<span class="pattern-pill">{txt.capitalize()}</span>'
 
 SPACER = "&nbsp;&nbsp;&nbsp;"        # three NBSP for wider gaps
-
 
 # ────────── main action ──────────
 if st.button("Run Scanner"):
@@ -191,17 +207,18 @@ if st.button("Run Scanner"):
         if "Pattern" in df.columns:
             df["Pattern"] = df["Pattern"].apply(style_pattern)
 
-        # full-width, equal column widths
+        # build HTML table (responsive width, custom CSS class)
         table_html = (
-            df.to_html(escape=False, index=False, border=0)
-              .replace(
-                  '<table class="dataframe">',
-                  '<table class="dataframe" style="width:100%; table-layout:fixed;">'
-              )
-              .replace("<th>", '<th style="text-align:left; width:16%;">')
-              .replace("<td>", '<td style="text-align:left; width:16%;">')
+            df.to_html(
+                escape=False,
+                index=False,
+                border=0,
+                classes="strat-table"
+            )
         )
+
         st.markdown(table_html, unsafe_allow_html=True)
+
 
     except Exception as e:
         st.error(f"Error while running scanner: {e}")
