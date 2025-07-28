@@ -35,7 +35,8 @@ st.markdown(
 )
 
 # ────────── sidebar widgets ──────────
-watchlist_type = st.selectbox("Watchlist Type", ["Stock", "Crypto"])
+watchlist_label = st.selectbox("Watchlist Type", ["Stocks", "Crypto"])
+watchlist_type  = "stock" if watchlist_label == "Stocks" else "crypto"
 
 if watchlist_type == "Crypto":
     timeframe = st.selectbox(
