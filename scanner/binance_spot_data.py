@@ -9,7 +9,7 @@ INTERVAL_MAP = {
     "4h": "4h",
     "12h": "12h",
     "day": "1d",
-    "previous day": "1d",
+    "3 day": "3d",
     "week": "1w",
     "month": "1M",
 }
