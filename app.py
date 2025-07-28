@@ -15,7 +15,7 @@ st.title("Strat Pattern Scanner")
 watchlist_label = st.selectbox("Watchlist Type", ["Stocks", "Crypto"])
 watchlist_type  = "stock" if watchlist_label == "Stocks" else "crypto"
 
-if watchlist_type == "Crypto":
+if watchlist_type == "crypto":
     timeframe = st.selectbox(
         "Timeframe",
         ["4H", "12H", "Day", "3 Day", "Week", "Month"],
@@ -166,7 +166,7 @@ if st.button("Run Scanner"):
 
         # final output
         df = df[["Symbol", "Pattern", "TFC"]]
-        st.table(df)
+        st.dataframe(df, use_container_width=True)
 
     except Exception as e:
         st.error(f"Error while running scanner: {e}")
