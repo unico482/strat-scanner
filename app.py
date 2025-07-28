@@ -131,7 +131,7 @@ if st.button("Run Scanner"):
             recent_bars = (
                 recent_bars
                 .iloc[recent_bars.groupby("symbol").cumcount(ascending=False) != 0]
-                .reset_index(drop=True)
+                recent_bars = recent_bars[mask].reset_index(drop=True)
             )
 
         # ─── decide which higher-TF bars we need ───
