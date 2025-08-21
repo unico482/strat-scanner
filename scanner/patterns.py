@@ -55,6 +55,9 @@ def detect_patterns(symbol, candles, selected_filters):
     if "Outside Bar" in selected_filters and sn_cc == 3:
         matches.append("Outside Bar")
 
+    is_2u = (sn_cc == 2 and cc.high > c1.high and cc.low >= c1.low)
+    is_2d = (sn_cc == 2 and cc.low < c1.low and cc.high <= c1.high)
+
     if "2u" in selected_filters and is_2u:
         matches.append("2u")
         
