@@ -35,6 +35,8 @@ selected_patterns = st.multiselect(
         {"label": "Hammer",      "value": "Hammer"},
         {"label": "Shooter",     "value": "Shooter"},
         {"label": "Inside Bar",  "value": "Inside Bar"},
+        {"label": "2u",          "value": "2u"},      
+        {"label": "2d",          "value": "2d"},   
         {"label": "2u Red",      "value": "2u Red"},
         {"label": "2d Green",    "value": "2d Green"},
         {"label": "RevStrat",    "value": "RevStrat"},
